@@ -146,6 +146,8 @@ def main():
     p.add_argument('--phase', choices=['discover', 'verify'], default='discover')
     p.add_argument('--state', type=Path, default=Path.cwd() / 'phd-search')
     p.add_argument('--model', default='gpt-5.4-mini')
+    p.add_argument('--provider', choices=['wandb', 'github-openai'], default='wandb',
+                   help='W&B proxy by default; explicit GitHub Actions mode uses its own OpenAI repository secret.')
     p.add_argument('--self-test', action='store_true')
     args = p.parse_args()
     if args.self_test:
@@ -182,8 +184,12 @@ def main():
     if args.phase == 'verify' and not saved.get('research'):
         p.error('Run --phase discover first.')
     now = datetime.now(timezone.utc).date().isoformat()
-    client = OpenAI(base_url=resolve_openai_base_url(),
-                    api_key=resolve_openai_api_key(), timeout=100, max_retries=0)
+    if args.provider == 'github-openai':
+        from github_runtime import client as github_client
+        client = github_client()
+    else:
+        client = OpenAI(base_url=resolve_openai_base_url(),
+                        api_key=resolve_openai_api_key(), timeout=100, max_retries=0)
     common = dict(model=args.model, tools=[{'type': 'web_search'}],
                   include=['web_search_call.action.sources'], max_tool_calls=8,
                   instructions=RULES, max_output_tokens=6500)

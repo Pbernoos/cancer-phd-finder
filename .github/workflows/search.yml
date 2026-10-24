@@ -36,25 +36,19 @@ jobs:
         run: pip install -r requirements.txt
       - name: Check required model configuration
         env:
-          OPENAI_API_KEY: ${{ secrets.PHD_LLM_API_KEY }}
-          WF_TRACE_SERVER_URL: ${{ vars.WF_TRACE_SERVER_URL }}
-          WANDB_ENTITY: ${{ vars.WANDB_ENTITY }}
-          WANDB_PROJECT: ${{ vars.WANDB_PROJECT }}
+          PHD_OPENAI_API_KEY: ${{ secrets.PHD_OPENAI_API_KEY }}
         run: |
-          python -c "from llm_proxy import resolve_openai_base_url,resolve_openai_api_key; resolve_openai_base_url(); resolve_openai_api_key(); print('Model configuration is present; not yet authenticated.')"
+          python github_runtime.py
       - name: Test screening gates
         run: python cancer_phd_agent.py --self-test
       - name: Discover and independently verify
         env:
-          OPENAI_API_KEY: ${{ secrets.PHD_LLM_API_KEY }}
-          WF_TRACE_SERVER_URL: ${{ vars.WF_TRACE_SERVER_URL }}
-          WANDB_ENTITY: ${{ vars.WANDB_ENTITY }}
-          WANDB_PROJECT: ${{ vars.WANDB_PROJECT }}
+          PHD_OPENAI_API_KEY: ${{ secrets.PHD_OPENAI_API_KEY }}
           INSTITUTION: ${{ inputs.institution }}
         run: |
           mkdir -p work
-          python cancer_phd_agent.py --institution "$INSTITUTION" --phase discover --state work > work/discover.log
-          python cancer_phd_agent.py --institution "$INSTITUTION" --phase verify --model gpt-5.4 --state work > work/verify.log
+          python cancer_phd_agent.py --provider github-openai --institution "$INSTITUTION" --phase discover --state work > work/discover.log
+          python cancer_phd_agent.py --provider github-openai --institution "$INSTITUTION" --phase verify --model gpt-5.4 --state work > work/verify.log
       - name: Publish structured results only
         env:
           INSTITUTION: ${{ inputs.institution }}

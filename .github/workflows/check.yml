@@ -1,0 +1,25 @@
+name: Check agent configuration (no model calls)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['cancer_phd_agent.py', 'github_runtime.py', 'test_configuration.py', '.github/workflows/check.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python cancer_phd_agent.py --self-test
+      - run: python test_configuration.py
+      - name: Check dedicated repository secret presence (no authentication request)
+        env:
+          PHD_OPENAI_API_KEY: ${{ secrets.PHD_OPENAI_API_KEY }}
+        run: |
+          python -c "import os; present=bool(os.environ.get('PHD_OPENAI_API_KEY','').strip()); print('PHD_OPENAI_API_KEY: '+('present; authentication and billing NOT tested' if present else 'missing; add this repository secret before starting searches'))"

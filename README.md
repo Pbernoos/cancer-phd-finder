@@ -21,7 +21,7 @@ tumour genetics/epigenetics, metastasis, cancer immunology and resistance.
 The site displays results; searches execute in **GitHub Actions**, not in your
 browser. No model credentials are included in this repository.
 
-1. Configure the credentials below in **Settings → Secrets and variables → Actions**.
+1. Add your own OpenAI API key as described below in **Settings → Secrets and variables → Actions**.
 2. Open **Actions → Search one university (manual) → Run workflow**.
 3. Select a university and explicitly authorize the paid model/web-search calls.
 4. A successful run updates the public structured results and deploys the website.
@@ -32,27 +32,29 @@ gpt-5.4-mini and the verification pass uses gpt-5.4.
 
 ### Model access requirements
 
-This version uses a project-scoped **W&B TraceServer LLM proxy**, with Responses
-API and web_search support. It does not silently fall back to a public provider.
-The ARIA session credential has NOT been exported or copied here. External
-GitHub runners must be independently authorized for this service; availability
-depends on your account and service configuration. An ordinary OpenAI key alone
-will not work with this version. If access is unavailable, the static site and
-local screening tests still work, but new online searches will not.
+The GitHub search workflow explicitly uses your **own OpenAI API account** and
+the Responses API with web_search. Create a dedicated project API key at
+https://platform.openai.com/api-keys and configure API billing in that account.
+A ChatGPT subscription is separate from API billing. Required model/tool access
+must be available to that API project. No model calls have been made to test
+your account's access or billing.
 
-Create this repository **secret**:
-
-| Name | Value |
-| --- | --- |
-| `PHD_LLM_API_KEY` | Your independently authorized W&B TraceServer credential |
-
-Create these repository **variables**, using documented configuration for your account:
+Create this repository **secret** under **Settings → Secrets and variables → Actions → New repository secret**:
 
 | Name | Value |
 | --- | --- |
-| `WF_TRACE_SERVER_URL` | Your W&B TraceServer base URL |
-| `WANDB_ENTITY` | The authorized W&B entity/team |
-| `WANDB_PROJECT` | The authorized W&B project |
+| `PHD_OPENAI_API_KEY` | Your own OpenAI API key with Responses, model and web_search access |
+
+No W&B variables are needed for the GitHub workflow. The ARIA session credentials
+have NOT been exported. The default local runtime remains the project-scoped
+W&B proxy; GitHub's explicit `github-openai` runtime only runs in GitHub Actions
+and reads only the dedicated `PHD_OPENAI_API_KEY` secret. There is no automatic
+provider fallback. Adding a secret does not start a search.
+
+To check setup without paid calls, open **Actions → Check agent configuration (no model calls)**.
+This checks code and whether a key is present; it does NOT verify authentication,
+model access or billing. Only the manual search workflow makes paid model calls.
+Use account spending controls where available; the workflow has no hard dollar cap.
 
 Never put API keys in a public file, a browser script, an issue, or workflow logs.
 Use a dedicated limited credential where supported. GitHub Actions workflows run
