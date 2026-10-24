@@ -22,4 +22,4 @@ jobs:
         env:
           PHD_OPENAI_API_KEY: ${{ secrets.PHD_OPENAI_API_KEY }}
         run: |
-          python -c "import os; present=bool(os.environ.get('PHD_OPENAI_API_KEY','').strip()); print('PHD_OPENAI_API_KEY: '+('present; authentication and billing NOT tested' if present else 'missing; add this repository secret before starting searches'))"
+          python -c "import os,sys; present=bool(os.environ.get('PHD_OPENAI_API_KEY','').strip()); print('PHD_OPENAI_API_KEY: '+('present; authentication and billing NOT tested' if present else 'missing; add this repository secret before starting searches')); sys.exit(0 if present else 1)"
