@@ -1,0 +1,77 @@
+name: Search one university (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      institution:
+        description: University to investigate (paid model calls)
+        type: choice
+        required: true
+        options: [toronto, mcgill, ubc, oxford, heidelberg, karolinska]
+      confirm_paid_search:
+        description: I authorize paid model/web-search calls for this one university
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  research:
+    if: inputs.confirm_paid_search
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Check required model configuration
+        env:
+          OPENAI_API_KEY: ${{ secrets.PHD_LLM_API_KEY }}
+          WF_TRACE_SERVER_URL: ${{ vars.WF_TRACE_SERVER_URL }}
+          WANDB_ENTITY: ${{ vars.WANDB_ENTITY }}
+          WANDB_PROJECT: ${{ vars.WANDB_PROJECT }}
+        run: |
+          python -c "from llm_proxy import resolve_openai_base_url,resolve_openai_api_key; resolve_openai_base_url(); resolve_openai_api_key(); print('Model configuration is present; not yet authenticated.')"
+      - name: Test screening gates
+        run: python cancer_phd_agent.py --self-test
+      - name: Discover and independently verify
+        env:
+          OPENAI_API_KEY: ${{ secrets.PHD_LLM_API_KEY }}
+          WF_TRACE_SERVER_URL: ${{ vars.WF_TRACE_SERVER_URL }}
+          WANDB_ENTITY: ${{ vars.WANDB_ENTITY }}
+          WANDB_PROJECT: ${{ vars.WANDB_PROJECT }}
+          INSTITUTION: ${{ inputs.institution }}
+        run: |
+          mkdir -p work
+          python cancer_phd_agent.py --institution "$INSTITUTION" --phase discover --state work > work/discover.log
+          python cancer_phd_agent.py --institution "$INSTITUTION" --phase verify --model gpt-5.4 --state work > work/verify.log
+      - name: Publish structured results only
+        env:
+          INSTITUTION: ${{ inputs.institution }}
+        run: |
+          python -c "import json,os,pathlib; k=os.environ['INSTITUTION']; d=json.loads(pathlib.Path('work',k+'.json').read_text()); fields=['institution','country','checked','status','opportunities','coverage','gaps']; pathlib.Path('data',k+'.json').write_text(json.dumps({f:d[f] for f in fields},indent=2,ensure_ascii=False))"
+          python build_site.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data docs
+          if ! git diff --cached --quiet; then
+            git commit -m "Update PhD search results"
+            git push
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - name: Deploy updated results
+        id: deployment
+        uses: actions/deploy-pages@v4
